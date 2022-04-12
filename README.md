@@ -1,5 +1,5 @@
 # HopBox
- An image analysis pipeline for evaluating hop cone morphology in the context of breeding programs. In this analysis we use a fully convoltuional network trained using 20 manually masked images.
+ An image analysis pipeline for evaluating hop cone morphology in the context of breeding programs. In this analysis we use a fully convolutional network trained using 20 manually masked images.
  
  This work is in progress and is being prepared for submission to The Plant Genome. Upon acceptance, the pipeline will be fully publicly available for download and use. Stay tuned!
 
