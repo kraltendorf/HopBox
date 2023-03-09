@@ -1,18 +1,16 @@
 # HopBox
- An image analysis pipeline for evaluating hop cone morphology in the context of breeding programs. In this analysis we use a fully convolutional network trained using 20 manually masked images.
- 
- This work is in progress and is being prepared for submission to The Plant Phenome. Upon acceptance, the pipeline will be fully publicly available for download and use. Stay tuned!
+ An image analysis pipeline for evaluating hop cone morphology in the context of breeding programs. In this analysis we use a fully convolutional network trained using 12 manually masked images. This work has been submitted to the Plant Phenome Journal.
 
 ## This respository contains: 
 
 ### data
-image weights, and raw images
+image weights, and some examples of raw images to test the pipeline
 
 ### output
 all output produced by the pipeline
 
 ### resources
-materials list for making your own hop box using readily available materials
+materials list and instructions for making your own hop box using readily available materials
 
 ### scripts
-google colab code including the cone detection and barcode reading pipelines, r code for optimizing cone sampling
+google colab code including the cone detection, color correction, barcode reading, and data output pipeline, r code for analyzing the data, running analyses of variance, calculating heritability, creating figures, and optimizing cone sample numbers
