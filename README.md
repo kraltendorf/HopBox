@@ -3,14 +3,17 @@
 
 ## This respository contains: 
 
-### data
-image weights, and some examples of raw images to test the pipeline
+### Data
+image weights, dry matter data
 
-### output
+### Output
 all output produced by the pipeline
 
-### resources
+### Resources
 materials list and instructions for making your own hop box using readily available materials
 
-### scripts
-google colab code including the cone detection, color correction, barcode reading, and data output pipeline, r code for analyzing the data, running analyses of variance, calculating heritability, creating figures, and optimizing cone sample numbers
+### Scripts
+google colab code for cone detection (please read the README), color correction, barcode reading, and data output pipeline, as well as various r scripts for analyzing the data, running analyses of variance, calculating heritability, creating figures, and optimizing cone sample numbers.
+
+### Additional Online Resources
+please visit our [Publicly Available HopBox Resources folder] (https://drive.google.com/drive/folders/137de5nLf2781ed__zGgdpxRoeVoNl9d4?usp=share_link) to download the model (too big for GitHub), access the training and test images that were used, and to download a set of images to test the pipeline. 
