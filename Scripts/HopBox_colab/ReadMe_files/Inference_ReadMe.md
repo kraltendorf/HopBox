@@ -2,7 +2,7 @@
 
 Welcome to **HopBox Inference!** This is a simple, easy to use, Pytorch-Based FCN semantic segmentation model for to detect and extract Hop cone shape and color information from images. 
 
-This model was trained on a dataset of about 15 images of Hop cones, and is capable of detecting and segmenting Hop cones in images with a high degree of accuracy, then uses the segmentation to extract color and shape information. 
+This model was trained on a dataset of about 12 images of hop cones, and is capable of detecting and segmenting Hop cones in images with a high degree of accuracy, then uses the segmentation to extract color and shape information. The model is too large to feature on GitHub so it needs to be downloaded from Google Drive using the publicly available Google Drive Folder [Publicly Available HopBox Resources](https://drive.google.com/drive/folders/137de5nLf2781ed__zGgdpxRoeVoNl9d4?usp=share_linkhttps://drive.google.com/drive/folders/137de5nLf2781ed__zGgdpxRoeVoNl9d4?usp=share_link)
 
 For more information on the experimental setup, model architecture, color correction and results, please see the accompanying paper [paper].
 
@@ -11,7 +11,7 @@ This inference code is designed to be run on Google Colab or on any other platfo
 To run the code, follow the steps below:
 
 ### **Step 1:** Prepare the working directory
-In the working directory, create a folder that contains the images to run infernce. The images can be in any format.
+In the working directory, create a folder that contains the images to run inference. The images can be in any format.
 Make sure you have the following files in the working directory or in a subdirectory:
  - `HopBox_Infer.ipynb` # This is the inference code
  - `model.pth` # This is the model weights
