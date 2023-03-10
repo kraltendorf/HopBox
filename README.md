@@ -6,10 +6,10 @@ This work has been submitted for publication in the Plant Phenome Journal.
 ## This respository contains: 
 
 ### Data
-image weights, dry matter data
+image weights, dry matter data, and the output from the HopBox pipeline
 
 ### Output
-all output produced by the pipeline
+all output produced from the analysis of the phenotypic data resulting from the HopBox pipeline
 
 ### Resources
 materials list and instructions for making your own hop box using readily available materials
