@@ -16,7 +16,7 @@ import torch
 import torch.nn as nn
 import torchvision
 import torchvision.transforms as T
-from google.colab.patches import cv2_imshow
+# from google.colab.patches import cv2_imshow
 from PIL import Image
 from scipy import ndimage as ndi
 from scipy.ndimage import morphology
@@ -96,6 +96,30 @@ def get_RGB_values(image,coords):
   RGB_values[RGB_values == 0] = 1
   return RGB_values
 
+
+def get_patch_sizes(img1):
+    
+    shp = img1.shape[:2]
+    v = cv2.cvtColor(img1, cv2.COLOR_BGR2HSV)[:,:,2]
+    v = cv2.normalize(v, None, 0, 255, cv2.NORM_MINMAX)
+    ret, thresh = cv2.threshold(v, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    min_area = 0.01*shp[0]*shp[1]
+    # draw rectangles on image
+    Dims = []
+    for cnt in contours:
+        x,y,w,h = cv2.boundingRect(cnt)
+        
+        ratio = w/h
+        area = w*h
+        if ratio<0.9 or ratio>1.20 or area<min_area: # get rid of rectangles that are too small or too tall/wide
+            continue
+        # Append dimensions to list
+        Dims.append((w,h))
+        
+    return np.round(np.mean(Dims, axis=0)).astype(int)
+    
+    
 #Extract Color chart values from image
 def extract_color_chart(img):
     detector = cv2.mcc.CCheckerDetector_create()
@@ -110,16 +134,27 @@ def extract_color_chart(img):
             chartsRGB = checker.getChartsRGB()
             width, height = chartsRGB.shape[:2]
             roi = chartsRGB[0:width,1]
+            
+            box_pts = checker.getBox()
+            x1 = int(min(box_pts[:,0]))
+            x2 = int(max(box_pts[:,0]))
+            y1 = int(min(box_pts[:,1]))
+            y2 = int(max(box_pts[:,1]))
+            
+            # crop image to bounding box
+            img_roi = img[y1:y2, x1:x2]
+            
+            dims = get_patch_sizes(img_roi)
             # print (roi)
             rows = int(roi.shape[:1][0])
             src = chartsRGB[:,1].copy().reshape(int(rows/3), 1, 3)
             src = src.reshape(24,3)
-    return src, img_draw
+    return src, img_draw, dims
 
 # Correct image color
 def correct_color(img, ref): 
   im_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-  src, img2 = extract_color_chart(img)
+  src, img2, dims = extract_color_chart(img)
   model = Pipeline([('poly', PolynomialFeatures(degree = 3)),
                   ('pls', PLSRegression(n_components = 12))])
 
@@ -136,14 +171,13 @@ def correct_color(img, ref):
   corr_img[corr_img <= 0] = im_rgb[corr_img <= 0]
   corr_img = corr_img.astype(np.uint8)
 
-  return corr_img
+  return corr_img, dims
 
 # gets region property and color params, outputs them in a data frame
 def get_morph_xtics(mat_mask, image1, cor_img, fn, qr):
 
     selem = morphology.disk(3)
-    mat_mask = morphology.binary_opening(mat_mask, footprint=selem) # use morphological opening
-    # mat_mask = morphology.binary_closing(mat_mask, selem=selem) # use morphological closing
+    mat_mask = morphology.binary_opening(mat_mask, selem)
     shX,shY,Ch = image1.shape
     min_fac = 0.0011 ######################
     mat_mask = morphology.remove_small_objects(mat_mask, int(min_fac*shX*shY)) 
@@ -242,6 +276,72 @@ def get_morph_xtics(mat_mask, image1, cor_img, fn, qr):
     return Labelled_img, mat_mask, df
 
 
+def infer_single_image(image, model_dir, scale):
+    
+    materials = [
+             Material("background", [255,255,255], 255, 0.5),
+             Material("hops", [0,0,0], 1, 0.7),
+             ]
+    num_materials =len(materials)
+
+    model=torchvision.models.segmentation.fcn_resnet101(pretrained=False)
+    model.classifier=FCNHead(2048, num_materials)
+
+    kd = 0
+    if torch.cuda.is_available():
+        device = torch.device('cuda')
+        kd = 1
+    else:
+        device = torch.device('cpu')
+    
+    model.to(device)
+
+    if kd == 1: # cuda device available
+        model.load_state_dict(torch.load(model_dir), strict=False)
+        # print('Model loaded to GPU')
+
+    model.train()
+    
+    w, h = image.size
+    image, newW, newH = resize_image(image,scale)
+    
+    image1 = np.array(image, dtype='ubyte')
+
+    image = np.array(image, dtype=float)
+    new_im = np.zeros((3, newH, newW))
+    new_im[0,:,:] = image[:,:,0]
+    new_im[1,:,:] = image[:,:,1]
+    new_im[2,:,:] = image[:,:,2]
+    image = new_im
+    
+    # Either
+    mean = [0.6654, 0.6710, 0.6492] # exerpt from taining code
+    std = [0.2726, 0.2342, 0.2406]
+
+    image = torch.from_numpy(image)
+    image = T.Normalize(mean = mean, std = std)(image)
+    
+    image.unsqueeze_(0)
+    image = image.to(device = device, dtype=torch.float32)
+
+    # 5. Predict mask using DL model
+    tic = time.time()
+    with torch.no_grad():
+        mask = model(image)['out']
+        mask = nn.Sigmoid()(mask)
+
+    toc = time.time()
+    print('Inference time: '+str(toc-tic))
+
+    k = 1
+    min_conf = 0.7
+    mat_mask = mask.cpu().detach().numpy()[0,k,:,:]
+    mat_mask[mat_mask >= min_conf] = 1
+    mat_mask[mat_mask < min_conf] = 0
+    
+    return (mat_mask*255).astype(np.uint8)
+
+
 def run_inference(ref, directories, filess, scale, Save_Images=True):
     """
     Run inference on the images in the given directory.
@@ -277,21 +377,24 @@ def run_inference(ref, directories, filess, scale, Save_Images=True):
 
     if kd == 1: # cuda device available
         model.load_state_dict(torch.load(directories[4]), strict=False)
+        # print('Model loaded to GPU')
 
     model.train()
     
     DF = pd.DataFrame()
     for file in filess:
+        # print running inference on i out of n images
+        print('\nRunning inference on image '+str(filess.index(file)+1)+' out of '+str(len(filess))+' images')
+        
         # 1. load and preprocess image
         image = Image.open(directories[0] + file)
         
         w, h = image.size
-        print(image.size)
         image, newW, newH = resize_image(image,scale)
 
         # 2. Color correction
         img = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-        corrected_img = correct_color(img, ref)
+        corrected_img, dims = correct_color(img, ref)
 
 
         # 3. Read barcode
@@ -303,7 +406,6 @@ def run_inference(ref, directories, filess, scale, Save_Images=True):
 
         # 4. Preprocess image for DL inference
         image1 = np.array(image, dtype='ubyte')
-        image2 = image1
 
         image = np.array(image, dtype=float)
         new_im = np.zeros((3, newH, newW))
@@ -338,14 +440,17 @@ def run_inference(ref, directories, filess, scale, Save_Images=True):
         mat_mask[mat_mask < min_conf] = 0
 
         Labelled_img, mat_mask, df = get_morph_xtics(mat_mask, image1, corrected_img, file, plt_name)
+        # add dim(w,h) to df
+        df['Patch_W'] = dims[0]
+        df['Patch_H'] = dims[1]
+        
         DF = pd.concat([DF,df])
-
         # save mask, labelled image, and segmented image
         if Save_Images == 1:
-            io.imsave(directories[1] + file + "_mask.png", mat_mask)
+            io.imsave(directories[1] + file + "_mask.png", (255*mat_mask).astype(np.uint8))
             io.imsave(directories[2] + file + "_label_mask.png", Labelled_img.astype(np.uint8))
             io.imsave(directories[3] + file +"_corrected.png", corrected_img.astype(np.uint8))
-            
-    csv_name = directories[5] + "Results.csv"
+        
+    csv_name = directories[5] + "/Results.csv"
     DF.to_csv(csv_name)
     print('Data saved to: '+csv_name)
